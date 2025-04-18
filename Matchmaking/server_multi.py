@@ -3,10 +3,11 @@ from flask_socketio import SocketIO, emit, join_room
 import random
 
 app = Flask(__name__)
-socket = SocketIO(app, cors_allowed_origins="*")
+socket = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 wait_player = []
 game = {}
+names = {}
 
 @app.route('/')
 def index():
@@ -14,18 +15,21 @@ def index():
 
 @socket.on('connect')
 def handle_connect():
-    print("{request.sid} connecté")
+    print(f"{request.sid} connecté")
 
 
 @socket.on('disconnect')
 def handle_disconnect():
-    print("{request.sid} disconnecté")
+    print(f"{request.sid} disconnecté")
     if request.sid in wait_player:
         wait_player.remove(request.sid)
+        names.pop(request.sid)
     
 @socket.on('waiting_room')
 def handle_waiting_room(data):
     """Permet de rejoindre la salle d'attente et lorsqu'il y a 2 joueurs, de les faire jouer ensemble"""
+    pseudo = data.get('pseudo', '???')
+    names[request.sid] = pseudo
     wait_player.append(request.sid)
     print(f"Waiting room: {request.sid}")
     if len(wait_player) >= 2:
@@ -35,9 +39,10 @@ def handle_waiting_room(data):
         
         for player in [player1, player2]:
             join_room(id_game)
-            emit('match_found', {'id_game': id_game, 'opponent': player2 if player == player1 else player1}, room=player)
+            oppenent_id = player2 if player == player1 else player1
+            emit('match_found', {'id_game': id_game, 'opponent': names[oppenent_id], 'symbol': 'X' if player == player1 else 'O'}, room=player)
         
-        print(f"Match found: {player1} and {player2} in game {id_game}")
+        print(f"Match found: {player1} vs {player2} in game {id_game}")
     else:
         emit('waiting_room', {'status': 'waiting'}, room=request.sid)
         
@@ -54,6 +59,12 @@ def handle_join_game(data):
     id_game = data['id_game']
     join_room(id_game)
     print(f"{request.sid} a rejoint la partie {id_game}")
+    
+    if id_game not in game:
+        game[id_game] = []
+        
+    if request.sid not in game[id_game]:
+        game[id_game].append(request.sid)
 
     # Premier joueur reçoit le tour
     if len(game[id_game]) == 2:
@@ -74,4 +85,4 @@ def handle_play(data):
 
     
 if __name__ == "__main__":
-    socket.run(app, host="0.0.0.0", port=6969, debug=True)
+    socket.run(app, host="0.0.0.0", port=6969, debug=True, allow_unsafe_werkzeug=True)

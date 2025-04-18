@@ -1,15 +1,18 @@
 import tkinter as tk
 import socketio
 import sys
+import requests as request
 
 # --- Récupération des arguments ---
-if len(sys.argv) >= 4:
+if len(sys.argv) >= 5:
     id_game = sys.argv[1]
     opponent = sys.argv[2]
-    server_url = sys.argv[3]
+    player_symbol = sys.argv[3]
+    server_url = sys.argv[4]
 else:
     id_game = "test"
     opponent = "unknown"
+    player_symbol = "X"
     server_url = "http://localhost:6969"
 
 # --- Connexion SocketIO ---
@@ -20,17 +23,50 @@ sio.connect(server_url)
 root = tk.Tk()
 root.title(f"Morpion - Partie {id_game} contre {opponent}")
 board = [" " for _ in range(9)]
-buttons = []
-player_symbol = "X"
 your_turn = False
 
+canvas_size = 300
+cell_size = canvas_size // 3
+
+canvas = tk.Canvas(root, width=canvas_size, height=canvas_size)
+canvas.pack()
+
+status_label = tk.Label(root, text="En attente de l'autre joueur...", font=("Arial", 16))
+status_label.pack(pady=10)
+
+# --- Fonctions de dessin ---
+def draw_board():
+    for i in range(1, 3):
+        # Lignes verticales
+        canvas.create_line(i * cell_size, 0, i * cell_size, canvas_size, width=3)
+        # Lignes horizontales
+        canvas.create_line(0, i * cell_size, canvas_size, i * cell_size, width=3)
+
+def draw_symbol(index, symbol):
+    x0 = (index % 3) * cell_size + 20
+    y0 = (index // 3) * cell_size + 20
+    x1 = (index % 3 + 1) * cell_size - 20
+    y1 = (index // 3 + 1) * cell_size - 20
+
+    if symbol == "X":
+        canvas.create_line(x0, y0, x1, y1, width=4)
+        canvas.create_line(x0, y1, x1, y0, width=4)
+    elif symbol == "O":
+        canvas.create_oval(x0, y0, x1, y1, width=4)
 
 # --- Logique de jeu ---
-def make_move(index):
+def click(event):
     global your_turn
-    if board[index] == " " and your_turn:
+    if not your_turn:
+        return
+
+    col = event.x // cell_size
+    row = event.y // cell_size
+    index = row * 3 + col
+
+    if board[index] == " ":
         board[index] = player_symbol
-        update_ui()
+        draw_symbol(index, player_symbol)
         sio.emit('play', {
             'id_game': id_game,
             'index': index,
@@ -38,10 +74,7 @@ def make_move(index):
         })
         check_winner()
         your_turn = False
-
-def update_ui():
-    for i in range(9):
-        buttons[i].config(text=board[i])
+        status_label.config(text="En attente de l'adversaire...")
 
 def check_winner():
     win_conditions = [(0,1,2), (3,4,5), (6,7,8),
@@ -49,18 +82,22 @@ def check_winner():
                       (0,4,8), (2,4,6)]
     for a, b, c in win_conditions:
         if board[a] == board[b] == board[c] and board[a] != " ":
-            print(f"Le joueur {board[a]} a gagné !")
-            root.destroy()
+            winner = board[a]
+            status_label.config(text=f"Le joueur {winner} a gagné !")
+            root.after(2000, root.destroy)
+            save_game(winner)
 
-def create_grid():
-    for i in range(9):
-        btn = tk.Button(root, text=" ", width=10, height=3, font=("Arial", 20),
-                        command=lambda i=i: make_move(i))
-        btn.grid(row=i//3, column=i%3)
-        buttons.append(btn)
+def save_game(winner):
+    try:
+        request.post(f"{server_url}/save", json={
+            'id_game': id_game,
+            'winner': winner
+        })
+        print(f"Partie {id_game} enregistrée avec le gagnant : {winner}")
+    except Exception as e:
+        print(f"Erreur lors de l'enregistrement de la partie : {e}")
 
-
-# --- Gestion des événements réseau ---
+# --- Réseau : événements SocketIO ---
 @sio.event
 def connect():
     print("Connecté au serveur")
@@ -71,15 +108,20 @@ def on_your_turn(data):
     global your_turn
     your_turn = True
     print("C’est ton tour !")
+    status_label.config(text="À toi de jouer !")
 
 @sio.on('opponent_move')
 def on_opponent_move(data):
     index = data['index']
     symbol = data['symbol']
     board[index] = symbol
-    update_ui()
+    draw_symbol(index, symbol)
     check_winner()
+    global your_turn
+    your_turn = True
+    status_label.config(text="À toi de jouer !")
 
 # --- Lancement du jeu ---
-create_grid()
+draw_board()
+canvas.bind("<Button-1>", click)
 root.mainloop()
