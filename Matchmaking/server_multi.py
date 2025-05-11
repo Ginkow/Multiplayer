@@ -32,17 +32,22 @@ def handle_waiting_room(data):
     names[request.sid] = pseudo
     wait_player.append(request.sid)
     print(f"Waiting room: {request.sid}")
+    
     if len(wait_player) >= 2:
         player1, player2 = wait_player.pop(0), wait_player.pop(0)
+        players = [player1, player2]
+        random.shuffle(players)
+        
         id_game = f"game_{random.randint(1000, 9999)}"
-        game[id_game] = [player1, player2]
+        game[id_game] = players
         
-        for player in [player1, player2]:
-            join_room(id_game)
-            oppenent_id = player2 if player == player1 else player1
-            emit('match_found', {'id_game': id_game, 'opponent': names[oppenent_id], 'symbol': 'X' if player == player1 else 'O'}, room=player)
+        symbol_player = {players[0]: "X", players[1]: "O"}
+        for player in players:
+            join_room(id_game, sid=player)	
+            oppenent_id = players[1] if player == players[0] else players[0]
+            emit('match_found', {'id_game': id_game, 'opponent': names[oppenent_id], 'symbol': symbol_player[player]}, room=player)
         
-        print(f"Match found: {player1} vs {player2} in game {id_game}")
+        print(f"Match found: {players[0]} vs {players[1]} in game {id_game}")
     else:
         emit('waiting_room', {'status': 'waiting'}, room=request.sid)
         
@@ -61,7 +66,8 @@ def handle_join_game(data):
     print(f"{request.sid} a rejoint la partie {id_game}")
     
     if id_game not in game:
-        game[id_game] = []
+        print(f"Erreur : partie {id_game} inconnue dans 'game'")
+        return
         
     if request.sid not in game[id_game]:
         game[id_game].append(request.sid)

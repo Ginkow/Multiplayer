@@ -2,9 +2,11 @@ import tkinter as tk
 import uuid
 import subprocess # Permet de lance un autre script python
 import socketio
+import os
+import sys
 
 id_player = str(uuid.uuid4()) # Génère un ID unique pour chaque player
-url = "http://172.20.10.11:6969" # URL du serveur de matchmaking
+url = "http://192.168.1.129:6969" # URL du serveur de matchmaking
 sio = socketio.Client()
 pseudo = ""
 
@@ -35,10 +37,18 @@ def connect():
 def disconnect():
     print("Disconnected from server.")
     
+# def start_match(id_game, opponent, symbol):
+#     """Lance le serveur de matchmaking."""
+#     print(f" Lancement du morpion contre {opponent} dans la partie {id_game}")
+#     subprocess.Popen(['python', 'Game/morpion.py', id_game, opponent, symbol, url]) # Lance le jeu de morpion avec l'ID de la partie et l'adversaire
+#     window.destroy()
+    
 def start_match(id_game, opponent, symbol):
-    """Lance le serveur de matchmaking."""
-    print(f" Lancement du morpion contre {opponent} dans la partie {id_game}")
-    subprocess.Popen(['python', 'Game/morpion.py', id_game, opponent, symbol, url]) # Lance le jeu de morpion avec l'ID de la partie et l'adversaire
+    subprocess.Popen([
+        sys.executable,
+        os.path.join('Game', 'morpion.py'),
+        str(id_game), str(opponent), str(symbol), str(url)
+    ])
     window.destroy()
 
 @sio.on("match_found")
@@ -65,6 +75,7 @@ def start_search():
         print(f"Connection error: {e}")
 
 search_btn.config(command=start_search)
+
 
 # Connexion au serveur Socket.IO
 # try:

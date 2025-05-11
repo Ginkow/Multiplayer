@@ -19,11 +19,13 @@ else:
 sio = socketio.Client()
 sio.connect(server_url)
 
+
 # --- Variables de jeu ---
 root = tk.Tk()
 root.title(f"Morpion - Partie {id_game} contre {opponent}")
 board = [" " for _ in range(9)]
-your_turn = False
+your_turn = True
+turn_ennemies = False
 
 canvas_size = 300
 cell_size = canvas_size // 3
@@ -31,7 +33,7 @@ cell_size = canvas_size // 3
 canvas = tk.Canvas(root, width=canvas_size, height=canvas_size)
 canvas.pack()
 
-status_label = tk.Label(root, text="En attente de l'autre joueur...", font=("Arial", 16))
+status_label = tk.Label(root)
 status_label.pack(pady=10)
 
 # --- Fonctions de dessin ---
@@ -57,7 +59,10 @@ def draw_symbol(index, symbol):
 # --- Logique de jeu ---
 def click(event):
     global your_turn
+    global turn_ennemies
+    
     if not your_turn:
+        status_label.config(text="C'est le tour de l'adversaire !")
         return
 
     col = event.x // cell_size
@@ -74,6 +79,7 @@ def click(event):
         })
         check_winner()
         your_turn = False
+        turn_ennemies = True
         status_label.config(text="En attente de l'adversaire...")
 
 def check_winner():
@@ -114,14 +120,26 @@ def on_your_turn(data):
 def on_opponent_move(data):
     index = data['index']
     symbol = data['symbol']
+    draw_symbol(index, symbol)
     board[index] = symbol
     draw_symbol(index, symbol)
     check_winner()
+    
     global your_turn
-    your_turn = True
+    # global turn_ennemies
+    # turn_ennemies = True
+    your_turn = False
     status_label.config(text="À toi de jouer !")
 
 # --- Lancement du jeu ---
 draw_board()
 canvas.bind("<Button-1>", click)
+
+# Message initial pour le joueur O
+if player_symbol == "O":
+    status_label.config(text="Attendez que l'adversaire joue...")
+else:
+    status_label.config(text="À toi de jouer !")
+
+
 root.mainloop()
