@@ -6,7 +6,8 @@ import os
 import sys
 
 id_player = str(uuid.uuid4()) # Génère un ID unique pour chaque player
-url = "http://192.168.1.129:6969" # URL du serveur de matchmaking
+url = "http://192.168.1.60:6969" # URL du serveur de matchmaking
+# url = "http://172.20.10.11:6969"
 sio = socketio.Client()
 pseudo = ""
 
@@ -47,9 +48,10 @@ def start_match(id_game, opponent, symbol):
     subprocess.Popen([
         sys.executable,
         os.path.join('Game', 'morpion.py'),
-        str(id_game), str(opponent), str(symbol), str(url)
+        str(id_game), str(opponent), str(symbol), str(url), id_player
     ])
     window.destroy()
+
 
 @sio.on("match_found")
 def check_match(data):

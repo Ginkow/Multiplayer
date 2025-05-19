@@ -10,8 +10,10 @@ def save_game():
     data = request.get_json()
     id_game = data.get('id_game')
     winner = data.get('winner')
+    opponent = data.get('opponent')
+    player = data.get('player')
     
-    resultat.append({'id_game': id_game, 'winner': winner})
+    resultat.append({'id_game': id_game, 'winner': winner, 'opponent': opponent, 'player': player})
     print(f"Game saved: {id_game} - Winner: {winner}")
     return jsonify({'status': 'saved'}), 200
 

@@ -4,11 +4,12 @@ import sys
 import requests as request
 
 # --- Récupération des arguments ---
-if len(sys.argv) >= 5:
+if len(sys.argv) >= 6:
     id_game = sys.argv[1]
     opponent = sys.argv[2]
     player_symbol = sys.argv[3]
     server_url = sys.argv[4]
+    id_player = sys.argv[5]
 else:
     id_game = "test"
     opponent = "unknown"
@@ -26,6 +27,7 @@ root.title(f"Morpion - Partie {id_game} contre {opponent}")
 board = [" " for _ in range(9)]
 your_turn = True
 turn_ennemies = False
+game_over = False
 
 canvas_size = 300
 cell_size = canvas_size // 3
@@ -75,14 +77,19 @@ def click(event):
         sio.emit('play', {
             'id_game': id_game,
             'index': index,
-            'symbol': player_symbol
+            'symbol': player_symbol,
+            'id_player': id_player
         })
         check_winner()
         your_turn = False
         turn_ennemies = True
         status_label.config(text="En attente de l'adversaire...")
+    
+    if game_over:
+        return
 
 def check_winner():
+    global game_over
     win_conditions = [(0,1,2), (3,4,5), (6,7,8),
                       (0,3,6), (1,4,7), (2,5,8),
                       (0,4,8), (2,4,6)]
@@ -90,14 +97,19 @@ def check_winner():
         if board[a] == board[b] == board[c] and board[a] != " ":
             winner = board[a]
             status_label.config(text=f"Le joueur {winner} a gagné !")
-            root.after(2000, root.destroy)
             save_game(winner)
+            game_over = True
+            back_btn = tk.Button(root, text="Retour au menu", command=back)
+            back_btn.pack(pady=10)
+
 
 def save_game(winner):
     try:
         request.post(f"{server_url}/save", json={
             'id_game': id_game,
-            'winner': winner
+            'winner': winner,
+            'opponent': opponent,
+            'player': player_symbol
         })
         print(f"Partie {id_game} enregistrée avec le gagnant : {winner}")
     except Exception as e:
@@ -107,7 +119,7 @@ def save_game(winner):
 @sio.event
 def connect():
     print("Connecté au serveur")
-    sio.emit('join_game', {'id_game': id_game})
+    sio.emit('join_game', {'id_game': id_game, 'id_player': id_player})
 
 @sio.on('your_turn')
 def on_your_turn(data):
@@ -120,16 +132,17 @@ def on_your_turn(data):
 def on_opponent_move(data):
     index = data['index']
     symbol = data['symbol']
-    draw_symbol(index, symbol)
     board[index] = symbol
     draw_symbol(index, symbol)
+    canvas.update()
     check_winner()
     
     global your_turn
     # global turn_ennemies
     # turn_ennemies = True
-    your_turn = False
+    your_turn = True
     status_label.config(text="À toi de jouer !")
+
 
 # --- Lancement du jeu ---
 draw_board()
@@ -140,6 +153,10 @@ if player_symbol == "O":
     status_label.config(text="Attendez que l'adversaire joue...")
 else:
     status_label.config(text="À toi de jouer !")
+    
+def back():
+    root.destroy()
+
 
 
 root.mainloop()

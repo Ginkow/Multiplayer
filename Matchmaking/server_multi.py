@@ -8,6 +8,8 @@ socket = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 wait_player = []
 game = {}
 names = {}
+sid_to_player = {}
+player_to_sid = {}
 
 @app.route('/')
 def index():
@@ -62,32 +64,38 @@ def handle_game_over(data):
 @socket.on('join_game')
 def handle_join_game(data):
     id_game = data['id_game']
-    join_room(id_game)
-    print(f"{request.sid} a rejoint la partie {id_game}")
-    
-    if id_game not in game:
-        print(f"Erreur : partie {id_game} inconnue dans 'game'")
-        return
-        
-    if request.sid not in game[id_game]:
-        game[id_game].append(request.sid)
+    id_player = data['id_player']
 
-    # Premier joueur reçoit le tour
+    if id_game not in game:
+        game[id_game] = []
+
+    if id_player not in game[id_game] and len(game[id_game]) < 2:
+        game[id_game].append(id_player)
+        print(f"[JOIN] Player {id_player} joined {id_game}")
+
     if len(game[id_game]) == 2:
-        socket.emit('your_turn', room=game[id_game][0])
+        socket.emit('your_turn', room=request.sid)
+
 
 @socket.on('play')
 def handle_play(data):
+
     id_game = data['id_game']
     index = data['index']
     symbol = data['symbol']
+    id_player = data['id_player']
+    
+    print(f"[DEBUG] {id_player} joue {symbol} à la case {index} (game {id_game})")
 
     # Envoyer le coup à l'adversaire
     for player in game[id_game]:
+        sid = player_to_sid.get(player)
         if player != request.sid:
-            socket.emit('opponent_move', {'index': index, 'symbol': symbol}, room=player)
+            print(f"Reçu coup adverse : {symbol} sur case {index}")
+            socket.emit('opponent_move', {'index': index, 'symbol': symbol}, room=sid)
         else:
-            socket.emit('your_turn', room=player)  # Redonne la main après réception du coup
+            print(f"Reçu coup player : {symbol} sur case {index}")
+            socket.emit('your_turn', room=sid)  # Redonne la main après réception du coup
 
     
 if __name__ == "__main__":
