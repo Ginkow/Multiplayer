@@ -2,6 +2,8 @@ import tkinter as tk
 import socketio
 import sys
 import requests as request
+import subprocess
+import os
 
 # --- Récupération des arguments ---
 if len(sys.argv) >= 6:
@@ -155,6 +157,10 @@ else:
     status_label.config(text="À toi de jouer !")
     
 def back():
+    subprocess.Popen([
+        sys.executable,
+        os.path.join("Matchmaking", "salon_matchmaking.py")
+    ])
     root.destroy()
 
 

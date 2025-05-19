@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 resultat = []
 
-@app.route('/save', methods=['POST'])
+@app.route('/', methods=['POST'])
 def save_game():
     """Enregistre le résultat de la partie dans le serveur de sauvegarde"""
     data = request.get_json()
