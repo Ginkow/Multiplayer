@@ -4,12 +4,29 @@ import subprocess # Permet de lance un autre script python
 import socketio
 import os
 import sys
+# import socket
+
+# def get_local_ip():
+#     """Récupère automatiquement l'adresse IP locale de la machine."""
+#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     try:
+#         # Connexion factice pour récupérer l'IP de la machine
+#         s.connect(("8.8.8.8", 80))
+#         ip = s.getsockname()[0]
+#     except Exception:
+#         ip = "127.0.0.1"
+#     finally:
+#         s.close()
+#     return ip
 
 id_player = str(uuid.uuid4()) # Génère un ID unique pour chaque player
-url = "http://192.168.1.60:6969" # URL du serveur de matchmaking
+url = "http://192.168.1.129:6969" # URL du serveur de matchmaking
+# url = f"http://{get_local_ip()}:6969"
 # url = "http://172.20.10.11:6969"
 sio = socketio.Client()
 pseudo = ""
+# print(f"[INFO] Connexion au serveur Socket.IO via : {url}")
+
 
 # Interface Matchmaking
 window = tk.Tk()
@@ -48,7 +65,7 @@ def start_match(id_game, opponent, symbol):
     subprocess.Popen([
         sys.executable,
         os.path.join('Game', 'morpion.py'),
-        str(id_game), str(opponent), str(symbol), str(url), id_player
+        str(id_game), str(opponent), str(symbol), str(url), id_player, pseudo
     ])
     window.destroy()
 

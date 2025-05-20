@@ -6,17 +6,19 @@ import subprocess
 import os
 
 # --- Récupération des arguments ---
-if len(sys.argv) >= 6:
+if len(sys.argv) >= 7:
     id_game = sys.argv[1]
     opponent = sys.argv[2]
     player_symbol = sys.argv[3]
     server_url = sys.argv[4]
     id_player = sys.argv[5]
+    pseudo = sys.argv[6]
 else:
     id_game = "test"
     opponent = "unknown"
     player_symbol = "X"
     server_url = "http://localhost:6969"
+    pseudo = " "
 
 # --- Connexion SocketIO ---
 sio = socketio.Client()
@@ -90,6 +92,10 @@ def click(event):
     if game_over:
         return
 
+def disable_click():
+    canvas.unbind("<Button-1>")
+
+
 def check_winner():
     global game_over
     win_conditions = [(0,1,2), (3,4,5), (6,7,8),
@@ -98,24 +104,44 @@ def check_winner():
     for a, b, c in win_conditions:
         if board[a] == board[b] == board[c] and board[a] != " ":
             winner = board[a]
-            status_label.config(text=f"Le joueur {winner} a gagné !")
-            save_game(winner)
             game_over = True
+            if winner == player_symbol:
+                status_label.config(text="Victoire !")
+            else:
+                status_label.config(text="Défaite !")
+            if winner == player_symbol:
+                save_game(winner)
+            disable_click()
             back_btn = tk.Button(root, text="Retour au menu", command=back)
             back_btn.pack(pady=10)
+            return
+
+    if " " not in board:
+        status_label.config(text="Égalité ! Nouvelle partie...")
+        root.after(3000, reset)  # 3s delay
+        return
 
 
 def save_game(winner):
     try:
-        request.post(f"{server_url}/save", json={
+        request.post("http://192.168.1.129:7070", json={
             'id_game': id_game,
             'winner': winner,
             'opponent': opponent,
-            'player': player_symbol
+            'player': pseudo
         })
         print(f"Partie {id_game} enregistrée avec le gagnant : {winner}")
     except Exception as e:
         print(f"Erreur lors de l'enregistrement de la partie : {e}")
+        
+def reset():
+    global board, your_turn, game_over
+    canvas.delete('all')
+    board = [" " for _ in range(9)]
+    your_turn = (player_symbol == "X")
+    game_over = False
+    draw_board()
+    status_label.config(text="Nouvelle Partie. A toi de jouer" if your_turn else "Attendez que l adversaire joue...")
 
 # --- Réseau : événements SocketIO ---
 @sio.event
