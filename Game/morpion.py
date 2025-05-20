@@ -85,15 +85,21 @@ def click(event):
             'id_player': id_player
         })
         check_winner()
-        your_turn = False
-        turn_ennemies = True
-        status_label.config(text="En attente de l'adversaire...")
+        if not game_over:
+            your_turn = False
+            turn_ennemies = True
+            status_label.config(text="En attente de l'adversaire...")
     
     if game_over:
         return
 
 def disable_click():
     canvas.unbind("<Button-1>")
+    
+def clear_action_buttons():
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Button) and widget['text'] in ["Retour au menu", "Rejouer"]:
+            widget.destroy()
 
 
 def check_winner():
@@ -105,6 +111,7 @@ def check_winner():
         if board[a] == board[b] == board[c] and board[a] != " ":
             winner = board[a]
             game_over = True
+            clear_action_buttons()
             if winner == player_symbol:
                 status_label.config(text="Victoire !")
             else:
@@ -112,13 +119,27 @@ def check_winner():
             if winner == player_symbol:
                 save_game(winner)
             disable_click()
+            # Bouton Rejouer
+            replay_btn = tk.Button(root, text="Rejouer", command=replay)
+            replay_btn.pack(pady=5)
+
+            # Bouton Retour
             back_btn = tk.Button(root, text="Retour au menu", command=back)
-            back_btn.pack(pady=10)
+            back_btn.pack(pady=5)
             return
 
     if " " not in board:
-        status_label.config(text="Égalité ! Nouvelle partie...")
-        root.after(3000, reset)  # 3s delay
+        game_over = True
+        clear_action_buttons()
+        status_label.config(text="Match nul ! Voulez-vous rejouer ?")
+
+        # Bouton Rejouer
+        replay_btn = tk.Button(root, text="Rejouer", command=replay)
+        replay_btn.pack(pady=5)
+
+        # Bouton Retour
+        back_btn = tk.Button(root, text="Retour au menu", command=back)
+        back_btn.pack(pady=5)
         return
 
 
@@ -141,6 +162,7 @@ def reset():
     your_turn = (player_symbol == "X")
     game_over = False
     draw_board()
+    canvas.bind("<Button-1>", click)
     status_label.config(text="Nouvelle Partie. A toi de jouer" if your_turn else "Attendez que l adversaire joue...")
 
 # --- Réseau : événements SocketIO ---
@@ -150,7 +172,7 @@ def connect():
     sio.emit('join_game', {'id_game': id_game, 'id_player': id_player})
 
 @sio.on('your_turn')
-def on_your_turn(data):
+def on_your_turn():
     global your_turn
     your_turn = True
     print("C’est ton tour !")
@@ -168,8 +190,9 @@ def on_opponent_move(data):
     global your_turn
     # global turn_ennemies
     # turn_ennemies = True
-    your_turn = True
-    status_label.config(text="À toi de jouer !")
+    if not game_over:
+        your_turn = True
+        status_label.config(text="À toi de jouer !")
 
 
 # --- Lancement du jeu ---
@@ -189,6 +212,9 @@ def back():
     ])
     root.destroy()
 
+def replay():
+    clear_action_buttons()
+    reset()
 
 
 root.mainloop()
