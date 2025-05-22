@@ -4,6 +4,21 @@ import sys
 import requests as request
 import subprocess
 import os
+import socket
+import webbrowser
+
+def get_local_ip():
+    """Récupère automatiquement l'adresse IP locale de la machine."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Connexion factice pour récupérer l'IP de la machine
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
 
 # --- Récupération des arguments ---
 if len(sys.argv) >= 7:
@@ -23,6 +38,7 @@ else:
 # --- Connexion SocketIO ---
 sio = socketio.Client()
 sio.connect(server_url)
+save_url = f"http://{get_local_ip()}:7070"
 
 
 # --- Variables de jeu ---
@@ -104,6 +120,9 @@ def clear_action_buttons():
 
 def check_winner():
     global game_over
+    if game_over:
+        return
+    
     win_conditions = [(0,1,2), (3,4,5), (6,7,8),
                       (0,3,6), (1,4,7), (2,5,8),
                       (0,4,8), (2,4,6)]
@@ -117,8 +136,13 @@ def check_winner():
             else:
                 status_label.config(text="Défaite !")
             if winner == player_symbol:
-                save_game(winner)
+                save_game(pseudo)
             disable_click()
+            
+            # Bouton Historique de partie
+            history_btn = tk.Button(root, text="Voir historique", command=lambda: webbrowser.open(f"{save_url}/save?pseudo={pseudo}"))
+            history_btn.pack(pady=5)
+            
             # Bouton Rejouer
             replay_btn = tk.Button(root, text="Rejouer", command=replay)
             replay_btn.pack(pady=5)
@@ -132,6 +156,11 @@ def check_winner():
         game_over = True
         clear_action_buttons()
         status_label.config(text="Match nul ! Voulez-vous rejouer ?")
+        save_game(pseudo)
+        
+        # Bouton Historique de partie
+        history_btn = tk.Button(root, text="Voir historique", command=lambda: webbrowser.open(f"{save_url}/save?pseudo={pseudo}"))
+        history_btn.pack(pady=5)
 
         # Bouton Rejouer
         replay_btn = tk.Button(root, text="Rejouer", command=replay)
@@ -143,15 +172,15 @@ def check_winner():
         return
 
 
-def save_game(winner):
+def save_game(winner_pseudo):
     try:
-        request.post("http://192.168.1.129:7070", json={
+        request.post(f"{save_url}", json= {
             'id_game': id_game,
-            'winner': winner,
+            'winner': winner_pseudo,
             'opponent': opponent,
             'player': pseudo
         })
-        print(f"Partie {id_game} enregistrée avec le gagnant : {winner}")
+        print(f"Partie {id_game} enregistrée avec le gagnant : {winner_pseudo}")
     except Exception as e:
         print(f"Erreur lors de l'enregistrement de la partie : {e}")
         
@@ -162,6 +191,7 @@ def reset():
     your_turn = (player_symbol == "X")
     game_over = False
     draw_board()
+    clear_action_buttons()
     canvas.bind("<Button-1>", click)
     status_label.config(text="Nouvelle Partie. A toi de jouer" if your_turn else "Attendez que l adversaire joue...")
 
@@ -188,8 +218,6 @@ def on_opponent_move(data):
     check_winner()
     
     global your_turn
-    # global turn_ennemies
-    # turn_ennemies = True
     if not game_over:
         your_turn = True
         status_label.config(text="À toi de jouer !")

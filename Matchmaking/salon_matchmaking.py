@@ -1,30 +1,30 @@
 import tkinter as tk
 import uuid
-import subprocess # Permet de lance un autre script python
+import subprocess
 import socketio
 import os
 import sys
-# import socket
+import socket
 
-# def get_local_ip():
-#     """Récupère automatiquement l'adresse IP locale de la machine."""
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         # Connexion factice pour récupérer l'IP de la machine
-#         s.connect(("8.8.8.8", 80))
-#         ip = s.getsockname()[0]
-#     except Exception:
-#         ip = "127.0.0.1"
-#     finally:
-#         s.close()
-#     return ip
+def get_local_ip():
+    """Récupère automatiquement l'adresse IP locale de la machine."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Connexion factice pour récupérer l'IP de la machine
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
 
 id_player = str(uuid.uuid4()) # Génère un ID unique pour chaque player
-url = "http://192.168.1.129:6969" # URL du serveur de matchmaking
-# url = f"http://{get_local_ip()}:6969"
-# url = "http://172.20.10.11:6969"
+# url = "http://192.168.1.129:6969" # URL du serveur de matchmaking
+url = f"http://{get_local_ip()}:6969"
 sio = socketio.Client()
 pseudo = ""
+id_player = ""
 # print(f"[INFO] Connexion au serveur Socket.IO via : {url}")
 
 
@@ -54,12 +54,6 @@ def connect():
 @sio.event
 def disconnect():
     print("Disconnected from server.")
-    
-# def start_match(id_game, opponent, symbol):
-#     """Lance le serveur de matchmaking."""
-#     print(f" Lancement du morpion contre {opponent} dans la partie {id_game}")
-#     subprocess.Popen(['python', 'Game/morpion.py', id_game, opponent, symbol, url]) # Lance le jeu de morpion avec l'ID de la partie et l'adversaire
-#     window.destroy()
     
 def start_match(id_game, opponent, symbol):
     subprocess.Popen([
@@ -94,13 +88,5 @@ def start_search():
         print(f"Connection error: {e}")
 
 search_btn.config(command=start_search)
-
-
-# Connexion au serveur Socket.IO
-# try:
-#     sio.connect(url)
-# except Exception as e:
-#     print(f"Connection error: {e}")
-#     label.config(text="Unable to connect to the matchmaking server.")
 
 window.mainloop()  # Démarre la boucle principale de l'interface graphique
