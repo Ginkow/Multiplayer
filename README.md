@@ -2,7 +2,10 @@ Pour lancer la partie, lancez d'abord le fichier main.py pour démarrer les serv
 
 Dans deux autres terminaux (un pour chaque joueur), lancez le fichier suivant:
 
+'''
+bash
 py Matchmaking/salon_matchmaking.py
+'''
 
 Assurez-vous que :
 
